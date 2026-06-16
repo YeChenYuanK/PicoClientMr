@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/InitScene.unity
+    guid: cdaec21a698f5da47b4f090e478a15d8
+  - enabled: 1
+    path: Assets/Scenes/00_Prepare/00_Prepare.unity
+    guid: 7840869f5bd67c94292fa4f63168bca8
+  - enabled: 1
+    path: Assets/Scenes/01_Storage/01_Storage.unity
+    guid: e664f8e3e04792c4eaa6ca8ae9310dd0
+  - enabled: 1
+    path: Assets/Scenes/02_Factory/02_Factory.unity
+    guid: 90cdb5566c9907c40b5c565d4b48c890
+  - enabled: 1
+    path: Assets/Scenes/03_Ruins/03_Ruins.unity
+    guid: ac62ca57cf9405446ba75d45f9087b31
+  - enabled: 1
+    path: Assets/Scenes/04_dust3/04_dust3.unity
+    guid: e3e60490136aac641b5e63ca3ce951e6
+  - enabled: 1
+    path: Assets/Scenes/05_ship/05_ship.unity
+    guid: 48db121ebb0be9043b47471fd18366b4
+  - enabled: 1
+    path: Assets/Scenes/06_Frozen/06_Frozen.unity
+    guid: af75c57e6f832224d8ad39019b8bccb4
+  - enabled: 1
+    path: Assets/OffLine.unity
+    guid: f39773b83a22ba54c9ce06ba7ec28342
+  m_configObjects:
+    Unity.XR.Oculus.Settings: {fileID: 0}
+    Unity.XR.OpenVR.Settings: {fileID: 11400000, guid: 7b23ffe91b2e550449de90078a8f665f, type: 2}
+    Unity.XR.PXR.Settings: {fileID: 11400000, guid: 206ae075ff0c38e4eaa04036c7b5bbb8, type: 2}
+    com.htc.upm.wave.xrsdk.xrsettings: {fileID: 11400000, guid: 2bbd1d93caa070b4eb54e03f4ae13bcd, type: 2}
+    com.unity.addressableassets: {fileID: 11400000, guid: e266a73772dd1914aa95e06f2e352b61, type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 3d75398f3543a084dbb14523f4acf386, type: 2}
+    xr.sdk.mock-hmd.settings: {fileID: 11400000, guid: d64d04cdded6a0146989d36879bf7253, type: 2}

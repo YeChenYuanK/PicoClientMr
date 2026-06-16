@@ -1,0 +1,18 @@
+# 默认忽略一切
+/*
+Assets/*
+
+# 放行 ProjectSettings（整目录配置）
+!/ProjectSettings/
+
+# 放行 Assets/Scripts，但只要 .cs 和 .meta
+!Assets/
+!Assets/Scripts/
+Assets/Scripts/**
+!Assets/Scripts/**/
+!Assets/Scripts/**/*.cs
+!Assets/Scripts/**/*.meta
+
+# 永远排除的垃圾
+.DS_Store
+**/.DS_Store
