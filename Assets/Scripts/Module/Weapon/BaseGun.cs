@@ -82,6 +82,17 @@ public class BaseGun : BaseGameEntity {
 
     public bool ReleaseTriggerFlag { get; set; }
 
+    // ========== 掩体穿透检测 ==========
+    [Header("掩体穿透检测")]
+    public LayerMask barrierLayer;                  // Wall/Barrier 物理层（Inspector 配置）
+    public float barrierEnvRadius = 0.15f;          // 第一级：枪口环境检测球半径
+    public float barrierFrontRadius = 0.05f;        // 第二级：枪口前方检测球半径
+    public float barrierFrontDist = 0.3f;           // 第二级：枪口前方检测距离
+    public GameObject barrierBlockUI;               // "请后退" UI 提示（Inspector 拖入）
+
+    private Collider[] _barrierBuf = new Collider[4]; // NonAlloc 缓存
+    private bool _barrierBlocked;
+
     public bool IsRepeating
 	{
 		get
@@ -206,6 +217,29 @@ public class BaseGun : BaseGameEntity {
     }
     private bool BulletNull;
    
+    /// <summary>
+    /// 掩体穿透三级检测。
+    /// 第一级 OverlapSphere（大口径）：检测枪口是否已在掩体内部。
+    /// 第二级 SphereCast（小口径）：检测枪口前方极近处是否有掩体。
+    /// </summary>
+    /// <returns>true = 被掩体阻挡，应禁止开火</returns>
+    private bool CheckBarrierPenetration(Vector3 muzzlePos, Vector3 fireDir)
+    {
+        // —— 第一级：枪口环境检测（大口径，检查枪口是否已穿透掩体）——
+        int hitCount = Physics.OverlapSphereNonAlloc(
+            muzzlePos, barrierEnvRadius, _barrierBuf, barrierLayer);
+
+        if (hitCount > 0)
+            return true;
+
+        // —— 第二级：枪口前方短距离检测（小口径，检查枪口即将穿透）——
+        if (Physics.SphereCast(muzzlePos, barrierFrontRadius, fireDir,
+                               out RaycastHit _, barrierFrontDist, barrierLayer))
+            return true;
+
+        return false;
+    }
+
 	public void Fire()
 	{
         if (_player == null) return;
@@ -221,6 +255,25 @@ public class BaseGun : BaseGameEntity {
         //射击速率
         if (lastFireTime != 0 && lastFireTime > DateUtil.NowMllSec) return;
         lastFireTime = DateUtil.NowMllSec + firingRate;
+
+        // ★ 掩体穿透检测（三级：OverlapSphere → SphereCast）
+        if (CheckBarrierPenetration(FirePoint.position, FirePoint.forward))
+        {
+            if (barrierBlockUI != null && !_barrierBlocked)
+            {
+                barrierBlockUI.SetActive(true);
+                _barrierBlocked = true;
+            }
+            return;
+        }
+
+        // 解除阻挡状态
+        if (_barrierBlocked)
+        {
+            _barrierBlocked = false;
+            if (barrierBlockUI != null) barrierBlockUI.SetActive(false);
+        }
+
         //没用子弹或者在换弹夹过程中
         if (BulletNum <= 0)
 		{
