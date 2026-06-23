@@ -7,6 +7,9 @@ using BNG;
 using Mirror;
 using static DataManager;
 using VRLeBigSpaceSDK;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public enum TargetEffectType
 {
@@ -92,6 +95,15 @@ public class BaseGun : BaseGameEntity {
 
     private Collider[] _barrierBuf = new Collider[4]; // NonAlloc 缓存
     private bool _barrierBlocked;
+
+    // 可视化调试（仅 Editor，不打入正式包）
+    #if UNITY_EDITOR
+    private bool _debugLastBarrierHit;
+    private Vector3 _debugLastMuzzlePos;
+    private Vector3 _debugLastFireDir;
+    private int _debugHitLevel;              // 0=无, 1=第一级, 2=第二级
+    private string _debugHitObjName;         // 命中的物体名
+    #endif
 
     public bool IsRepeating
 	{
@@ -230,13 +242,42 @@ public class BaseGun : BaseGameEntity {
             muzzlePos, barrierEnvRadius, _barrierBuf, barrierLayer);
 
         if (hitCount > 0)
+        {
+            Debug.Log($"[Barrier] 第一级命中! count={hitCount}, obj={_barrierBuf[0]?.name}, pos={muzzlePos}");
+
+#if UNITY_EDITOR
+            _debugLastBarrierHit = true;
+            _debugLastMuzzlePos = muzzlePos;
+            _debugLastFireDir = fireDir;
+            _debugHitLevel = 1;
+            _debugHitObjName = _barrierBuf[0]?.name;
+#endif
             return true;
+        }
 
         // —— 第二级：枪口前方短距离检测（小口径，检查枪口即将穿透）——
         if (Physics.SphereCast(muzzlePos, barrierFrontRadius, fireDir,
-                               out RaycastHit _, barrierFrontDist, barrierLayer))
-            return true;
+                               out RaycastHit hitInfo, barrierFrontDist, barrierLayer))
+        {
+            Debug.Log($"[Barrier] 第二级命中! obj={hitInfo.collider.name}, dist={hitInfo.distance:F3}, point={hitInfo.point}");
 
+#if UNITY_EDITOR
+            _debugLastBarrierHit = true;
+            _debugLastMuzzlePos = muzzlePos;
+            _debugLastFireDir = fireDir;
+            _debugHitLevel = 2;
+            _debugHitObjName = hitInfo.collider.name;
+#endif
+            return true;
+        }
+
+#if UNITY_EDITOR
+        _debugLastBarrierHit = false;
+        _debugLastMuzzlePos = muzzlePos;
+        _debugLastFireDir = fireDir;
+        _debugHitLevel = 0;
+        _debugHitObjName = null;
+#endif
         return false;
     }
 
@@ -259,6 +300,10 @@ public class BaseGun : BaseGameEntity {
         // ★ 掩体穿透检测（三级：OverlapSphere → SphereCast）
         if (CheckBarrierPenetration(FirePoint.position, FirePoint.forward))
         {
+            if (!_barrierBlocked)
+            {
+                Debug.Log($"[Barrier] 阻挡激活! 枪口={FirePoint.position}, 前方={FirePoint.forward}");
+            }
             if (barrierBlockUI != null && !_barrierBlocked)
             {
                 barrierBlockUI.SetActive(true);
@@ -270,6 +315,7 @@ public class BaseGun : BaseGameEntity {
         // 解除阻挡状态
         if (_barrierBlocked)
         {
+            Debug.Log("[Barrier] 阻挡解除");
             _barrierBlocked = false;
             if (barrierBlockUI != null) barrierBlockUI.SetActive(false);
         }
@@ -392,6 +438,64 @@ public class BaseGun : BaseGameEntity {
    
 
     
+
+#if UNITY_EDITOR
+    private void OnDrawGizmos()
+    {
+        if (!Application.isPlaying) return;
+        if (FirePoint == null) return;
+
+        Vector3 pos = _debugLastMuzzlePos;
+        Vector3 dir = _debugLastFireDir;
+        bool hit = _debugLastBarrierHit;
+
+        // 如果没有射击记录，用当前 FirePoint 位置做实时预览（不扣扳机也能看到检测区域）
+        bool hasRecord = dir != Vector3.zero;
+        if (!hasRecord)
+        {
+            pos = FirePoint.position;
+            dir = FirePoint.forward;
+        }
+
+        // ===== 第一级：枪口环境检测球 (OverlapSphere) =====
+        Gizmos.color = hit ? new Color(1, 0, 0, 0.25f) : new Color(0, 1, 0, 0.1f);
+        Gizmos.DrawSphere(pos, barrierEnvRadius);
+        Gizmos.color = hit ? Color.red : Color.green;
+        Gizmos.DrawWireSphere(pos, barrierEnvRadius);
+
+        // ===== 第二级：枪口前方扫描体 (SphereCast 胶囊) =====
+        Vector3 frontCenter = pos + dir * barrierFrontDist;
+        float r = barrierFrontRadius;
+        Vector3 right = Vector3.Cross(dir, Vector3.up).normalized;
+        if (right.magnitude < 0.01f) right = Vector3.right;
+        Vector3 up = Vector3.Cross(right, dir).normalized;
+
+        Gizmos.color = hit ? new Color(1, 0, 0, 0.25f) : new Color(0, 1, 1, 0.12f);
+        Gizmos.DrawSphere(pos, r);
+        Gizmos.DrawSphere(frontCenter, r);
+        Gizmos.color = hit ? Color.red : Color.cyan;
+        Gizmos.DrawLine(pos + right * r, frontCenter + right * r);
+        Gizmos.DrawLine(pos - right * r, frontCenter - right * r);
+        Gizmos.DrawLine(pos + up * r, frontCenter + up * r);
+        Gizmos.DrawLine(pos - up * r, frontCenter - up * r);
+        // 末端环
+        Handles.color = hit ? new Color(1, 0, 0, 0.6f) : new Color(0, 1, 1, 0.4f);
+        Handles.DrawWireDisc(frontCenter, dir, r);
+
+        // ===== 标签 =====
+        string label;
+        if (!hasRecord)
+            label = "等待射击...";
+        else if (hit)
+            label = $"阻挡 L{_debugHitLevel}: {_debugHitObjName}";
+        else
+            label = "安全";
+
+        var style = new GUIStyle { fontSize = 13, fontStyle = FontStyle.Bold };
+        style.normal.textColor = hit ? Color.red : (hasRecord ? Color.green : Color.gray);
+        Handles.Label(pos + Vector3.up * 0.25f, label, style);
+    }
+#endif
 
     private void OnDestroy()
     {
