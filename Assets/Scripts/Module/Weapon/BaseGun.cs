@@ -137,10 +137,11 @@ public class BaseGun : BaseGameEntity {
             this.gunModel.transform.SetParent(null);
         }
 
-        // 掩体检测需要配置 barrierLayer，否则不生效
+        // 掩体检测默认层：若未配置则自动设为 spc
         if (barrierLayer.value == 0)
         {
-            Debug.LogWarning($"[Barrier] {gameObject.name}: barrierLayer 未配置！请在 Inspector 中勾选掩体所在层（如 spc），否则掩体穿透检测不会生效。");
+            barrierLayer = LayerMask.GetMask("spc");
+            Debug.Log($"[Barrier] {gameObject.name}: barrierLayer 自动设为 spc");
         }
     }
 
