@@ -621,6 +621,18 @@ public class CSPlayer : NetworkBehaviour
     float MaxY;
     float MinY;
     float waitTime;
+
+    // ====== R3-5 下蹲优化: EMA平滑 + 迟滞阈值 + 0.3s防误触 ======
+    private float _smoothedHeadY = 0f;                    // EMA平滑后的头部Y坐标
+    private bool _headYInitialized = false;               // 平滑值是否已初始化
+    private const float EMA_ALPHA = 0.15f;                // EMA平滑系数(越小越平滑,减少VR追踪抖动)
+    private bool _isCrouchState = false;                  // 当前确认的蹲伏状态
+    private bool _pendingCrouchState = false;              // 待确认的蹲伏状态(计时器未到)
+    private float _crouchConfirmTimer = 0f;                // 状态确认计时器
+    private const float CROUCH_ENTER_THRESHOLD = 0.35f;    // 进入蹲伏的hight阈值(低于此值触发)
+    private const float CROUCH_EXIT_THRESHOLD = 0.55f;     // 退出蹲伏的hight阈值(高于此值触发,迟滞=0.2)
+    private const float CROUCH_CONFIRM_DELAY = 0.3f;       // 防误触确认延迟(秒)
+    private float _outputHight = 1f;                       // 输出用的平滑hight值(避免动画跳变)
    
     public void Update()
     {
@@ -663,14 +675,51 @@ public class CSPlayer : NetworkBehaviour
             Fire();
             //TestMove();
 
+            // R3-5 下蹲优化: EMA平滑 + 迟滞阈值 + 0.3s防误触
             Vector3 pos = Body(BodyState.Body_Head).position;
             if (pos.y > MaxY)
             {
                 MaxY = pos.y;
             }
             MaxY = Mathf.Clamp(MaxY, 0.8f, 1.65f);
+
+            // (1) EMA平滑头部高度,减少VR追踪抖动
+            if (!_headYInitialized)
+            {
+                _smoothedHeadY = pos.y;
+                _headYInitialized = true;
+            }
+            _smoothedHeadY += (pos.y - _smoothedHeadY) * EMA_ALPHA;
+
             MinY = MaxY * 0.7f;
-         float hight = Mathf.Clamp((pos.y - MinY) / (MaxY - MinY), 0, 1);
+            float rawHight = Mathf.Clamp((_smoothedHeadY - MinY) / (MaxY - MinY), 0, 1);
+
+            // (2) 迟滞阈值: 进入/退出蹲伏使用不同阈值,避免边界反复切换
+            bool detectCrouch = _isCrouchState
+                ? rawHight < CROUCH_EXIT_THRESHOLD    // 已蹲下:需站起到0.55以上才退出
+                : rawHight < CROUCH_ENTER_THRESHOLD;   // 站立中:需蹲到0.35以下才进入
+
+            // (3) 0.3s防误触: 状态变化需持续确认后才生效
+            if (detectCrouch != _pendingCrouchState)
+            {
+                _pendingCrouchState = detectCrouch;
+                _crouchConfirmTimer = 0f;
+            }
+            else
+            {
+                _crouchConfirmTimer += Time.deltaTime;
+            }
+
+            if (_crouchConfirmTimer >= CROUCH_CONFIRM_DELAY)
+            {
+                _isCrouchState = _pendingCrouchState;
+            }
+
+            // 输出平滑hight值用于动画混合(避免状态切换时动画跳变)
+            float targetHight = _isCrouchState ? Mathf.Clamp(rawHight, 0f, 0.5f) : 1f;
+            _outputHight = Mathf.Lerp(_outputHight, targetHight, Time.deltaTime * 10f);
+
+            float hight = _outputHight;
 
             Vector3 eulerAngle = Quaternion.LookRotation(Body(BodyState.Body_Right).forward).eulerAngles;
 
