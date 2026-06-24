@@ -686,6 +686,12 @@ public class CSPlayer : NetworkBehaviour
 
             // R3-5 下蹲优化: EMA平滑 + 迟滞阈值 + 0.3s防误触
             Vector3 pos = Body(BodyState.Body_Head).position;
+#if UNITY_EDITOR
+            // Editor 调试：用 Q/E 直接控制头部 Y（因为 Editor 下没有 VR 追踪）
+            if (Input.GetKey(KeyCode.Q)) pos.y -= 2f * Time.deltaTime;
+            if (Input.GetKey(KeyCode.E)) pos.y += 2f * Time.deltaTime;
+            Body(BodyState.Body_Head).position = new Vector3(pos.x, pos.y, pos.z);
+#endif
             if (pos.y > MaxY)
             {
                 MaxY = pos.y;
@@ -729,6 +735,10 @@ public class CSPlayer : NetworkBehaviour
             _outputHight = Mathf.Lerp(_outputHight, targetHight, Time.deltaTime * 10f);
 
             float hight = _outputHight;
+#if UNITY_EDITOR
+            if (Time.frameCount % 30 == 0) // 每秒2次，不刷屏
+                Debug.Log($"[蹲伏] smoothedY={_smoothedHeadY:F2} rawHight={rawHight:F2} outHight={hight:F2} isCrouch={_isCrouchState} pending={_pendingCrouchState} timer={_crouchConfirmTimer:F2}");
+#endif
 
             Vector3 eulerAngle = Quaternion.LookRotation(Body(BodyState.Body_Right).forward).eulerAngles;
 
