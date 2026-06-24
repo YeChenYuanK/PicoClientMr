@@ -277,6 +277,15 @@ public class CSPlayer : NetworkBehaviour
     public override void OnStartLocalPlayer()
     {
         Debug.Log($"[NET-DIAG] OnStartLocalPlayer called: netId={netId}, connectionId={connectionToServer?.connectionId}");
+
+        // R3-5: 重置下蹲优化状态（防止 Mirror 重连时残留旧值）
+        _smoothedHeadY = 0f;
+        _headYInitialized = false;
+        _isCrouchState = false;
+        _pendingCrouchState = false;
+        _crouchConfirmTimer = 0f;
+        _outputHight = 1f;
+
         if (!isServer)
         {
             bool seeThroughManual = GameMng.Instance.isGameState(1);
@@ -710,7 +719,7 @@ public class CSPlayer : NetworkBehaviour
                 _crouchConfirmTimer += Time.deltaTime;
             }
 
-            if (_crouchConfirmTimer >= CROUCH_CONFIRM_DELAY)
+            if (_crouchConfirmTimer >= CROUCH_CONFIRM_DELAY && _isCrouchState != _pendingCrouchState)
             {
                 _isCrouchState = _pendingCrouchState;
             }
