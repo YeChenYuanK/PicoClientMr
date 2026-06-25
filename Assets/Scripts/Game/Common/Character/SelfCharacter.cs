@@ -22,11 +22,8 @@ public class SelfCharacter : BaseCharacter
     public GameObject lifeObj;
 
     [Header("幽灵光圈")]
-    [Tooltip("美术做好的幽灵光圈特效 prefab")]
-    [SerializeField] private GameObject ghostFxPrefab;
-    [Tooltip("光圈挂载节点（留空则挂 selfTrans 下）")]
-    [SerializeField] private Transform ghostFxParent;
-    private GameObject spawnedGhostFx;
+    [Tooltip("美术做好的幽灵光圈节点（直接拖场景里的节点）")]
+    [SerializeField] private GameObject ghostFx;
 
     private float lastHirtAudioTime;
     public bool isBreath { get; set; }
@@ -99,21 +96,14 @@ public class SelfCharacter : BaseCharacter
 
     private void ShowGhostFx()
     {
-        if (ghostFxPrefab == null) return;
-        HideGhostFx();
-        Transform parent = ghostFxParent != null ? ghostFxParent : selfTrans;
-        spawnedGhostFx = Instantiate(ghostFxPrefab, parent);
-        spawnedGhostFx.transform.localPosition = Vector3.zero;
-        spawnedGhostFx.transform.localRotation = Quaternion.identity;
+        if (ghostFx != null)
+            ghostFx.SetActive(true);
     }
 
     private void HideGhostFx()
     {
-        if (spawnedGhostFx != null)
-        {
-            Destroy(spawnedGhostFx);
-            spawnedGhostFx = null;
-        }
+        if (ghostFx != null)
+            ghostFx.SetActive(false);
     }
    
 
