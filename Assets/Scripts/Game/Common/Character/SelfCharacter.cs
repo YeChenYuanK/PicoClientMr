@@ -21,6 +21,13 @@ public class SelfCharacter : BaseCharacter
     public FollowVRCamera rebirthArrow;
     public GameObject lifeObj;
 
+    [Header("幽灵光圈")]
+    [Tooltip("美术做好的幽灵光圈特效 prefab")]
+    [SerializeField] private GameObject ghostFxPrefab;
+    [Tooltip("光圈挂载节点（留空则挂 selfTrans 下）")]
+    [SerializeField] private Transform ghostFxParent;
+    private GameObject spawnedGhostFx;
+
     private float lastHirtAudioTime;
     public bool isBreath { get; set; }
     public Foot CheckFoot;
@@ -87,6 +94,26 @@ public class SelfCharacter : BaseCharacter
     {
         this.isBreath = false;
         stateMachine.ChangeState(new CharacterDieState(this));
+        ShowGhostFx();
+    }
+
+    private void ShowGhostFx()
+    {
+        if (ghostFxPrefab == null) return;
+        HideGhostFx();
+        Transform parent = ghostFxParent != null ? ghostFxParent : selfTrans;
+        spawnedGhostFx = Instantiate(ghostFxPrefab, parent);
+        spawnedGhostFx.transform.localPosition = Vector3.zero;
+        spawnedGhostFx.transform.localRotation = Quaternion.identity;
+    }
+
+    private void HideGhostFx()
+    {
+        if (spawnedGhostFx != null)
+        {
+            Destroy(spawnedGhostFx);
+            spawnedGhostFx = null;
+        }
     }
    
 
@@ -96,7 +123,7 @@ public class SelfCharacter : BaseCharacter
     }
     public void ResetDeadInfo()
     {
-        
+        HideGhostFx();
     }
     public void ShowRebirthArrow(Transform rebirthPoint)
     {
