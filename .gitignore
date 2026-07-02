@@ -5,8 +5,11 @@ Assets/*
 # 放行 ProjectSettings（整目录配置）
 !/ProjectSettings/
 
-# 放行 Assets/Scripts，但只要 .cs 和 .meta
+# 放行 Knife 美术资源和 Assets/Scripts（Scripts 只要 .cs 和 .meta）
 !Assets/
+!Assets/Knife.meta
+!Assets/Knife/
+!Assets/Knife/**
 !Assets/Scripts/
 Assets/Scripts/**
 !Assets/Scripts/**/
